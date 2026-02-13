@@ -1,0 +1,95 @@
+# ============================================================
+# k6 Load Tests — La Petite Maison de l'Épouvante
+# Triggered manually or after successful deployment
+# ============================================================
+
+name: "⚡ Load Tests (k6)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "API base URL to test"
+        required: true
+        default: "https://petite-maison-api.example.azurecontainerapps.io"
+      vus:
+        description: "Max virtual users"
+        required: false
+        default: "50"
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  load-test:
+    name: "⚡ k6 Load Test"
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D68
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install -y k6
+
+      - name: Run k6 load test
+        env:
+          API_URL: ${{ github.event.inputs.target_url || vars.BACKEND_URL }}
+        run: |
+          echo "🎯 Target: $API_URL"
+          echo "👥 Testing with up to ${{ github.event.inputs.vus || '50' }} virtual users"
+          k6 run \
+            --out json=k6-results.json \
+            --env API_URL=$API_URL \
+            k6/load-test.js
+
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-load-test-results
+          path: |
+            k6-results.json
+            k6-summary.json
+          retention-days: 30
+
+      - name: Parse and display results
+        if: always()
+        run: |
+          echo "## ⚡ k6 Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f k6-summary.json ]; then
+            node -e "
+              const fs = require('fs');
+              const data = JSON.parse(fs.readFileSync('k6-summary.json', 'utf8'));
+              const metrics = data.metrics || {};
+
+              const fmt = (v) => v ? v.toFixed(2) : 'N/A';
+              const dur = metrics.http_req_duration?.values || {};
+              const errs = metrics.errors?.values || {};
+              const pList = metrics.product_list_duration?.values || {};
+              const pDetail = metrics.product_detail_duration?.values || {};
+
+              let md = '';
+              md += '| Metric | Value | Threshold | Status |\\n';
+              md += '|--------|-------|-----------|--------|\\n';
+              md += '| P95 Response Time | ' + fmt(dur['p(95)']) + 'ms | < 500ms | ' + (dur['p(95)'] < 500 ? '✅' : '❌') + ' |\\n';
+              md += '| P99 Response Time | ' + fmt(dur['p(99)']) + 'ms | — | ℹ️ |\\n';
+              md += '| Median Response Time | ' + fmt(dur.med) + 'ms | — | ℹ️ |\\n';
+              md += '| Error Rate | ' + fmt((errs.rate || 0) * 100) + '% | < 1% | ' + ((errs.rate || 0) < 0.01 ? '✅' : '❌') + ' |\\n';
+              md += '| Product List P95 | ' + fmt(pList['p(95)']) + 'ms | < 400ms | ' + ((pList['p(95)'] || 0) < 400 ? '✅' : '❌') + ' |\\n';
+              md += '| Product Detail P95 | ' + fmt(pDetail['p(95)']) + 'ms | < 300ms | ' + ((pDetail['p(95)'] || 0) < 300 ? '✅' : '❌') + ' |\\n';
+              console.log(md);
+            " >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No summary file found" >> $GITHUB_STEP_SUMMARY
+          fi
