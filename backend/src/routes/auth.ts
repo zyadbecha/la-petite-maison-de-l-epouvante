@@ -96,7 +96,14 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    res.json(result.rows[0]);
+    const user = result.rows[0];
+    // Transform to camelCase for frontend
+    res.json({
+      id: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      roles: user.roles || [],
+    });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
