@@ -1,12 +1,12 @@
 import { Router, Request, Response } from "express";
-import { checkJwt } from "../middleware/auth";
-import { loadUser, requireRole, AuthRequest } from "../middleware/roles";
+import { authenticate, AuthRequest } from "../middleware/auth-simple";
+import { requireRole } from "../middleware/roles";
 import { pool } from "../db/pool";
 import { writeAuditLog } from "../services/audit.service";
 import { logger } from "../config/logger";
 
 const router = Router();
-const auth = [checkJwt, loadUser, requireRole("BUYER", "ADMIN")];
+const auth = [authenticate, requireRole("BUYER", "ADMIN")];
 
 // ============================================================
 // PUBLIC — list fanzine issues

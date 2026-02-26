@@ -1,11 +1,11 @@
 import { Router, Response } from "express";
-import { checkJwt } from "../middleware/auth";
-import { loadUser, requireRole, AuthRequest } from "../middleware/roles";
+import { authenticate, AuthRequest } from "../middleware/auth-simple";
+import { requireRole } from "../middleware/roles";
 import { pool } from "../db/pool";
 import { writeAuditLog } from "../services/audit.service";
 
 const router = Router();
-const adminAuth = [checkJwt, loadUser, requireRole("ADMIN")];
+const adminAuth = [authenticate, requireRole("ADMIN")];
 
 // ============================================================
 // USERS MANAGEMENT

@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Check, Loader2 } from "lucide-react";
 import { api } from "../api";
-import { useToken } from "../hooks/useToken";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Checkout() {
-  const getToken = useToken();
+  const { token } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ shipping_name: "", shipping_address: "", shipping_city: "", shipping_zip: "" });
   const [loading, setLoading] = useState(false);
@@ -22,7 +22,6 @@ export default function Checkout() {
     }
     setLoading(true); setError("");
     try {
-      const token = await getToken();
       if (!token) return;
       await api.checkout(token, form);
       setSuccess(true);

@@ -8,6 +8,7 @@ import { logger } from "./config/logger";
 import { checkDbConnection } from "./db/pool";
 
 import healthRouter from "./routes/health";
+import authRouter from "./routes/auth";
 import meRouter from "./routes/me";
 import productsRouter from "./routes/products";
 import cartRouter from "./routes/cart";
@@ -35,6 +36,7 @@ app.use(
 // ROUTES
 // ============================================================
 app.use(healthRouter);
+app.use(authRouter);
 app.use(meRouter);
 app.use(productsRouter);
 app.use(cartRouter);

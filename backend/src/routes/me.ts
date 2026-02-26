@@ -1,45 +1,13 @@
 import { Router, Response } from "express";
-import { checkJwt } from "../middleware/auth";
-import { loadUser, AuthRequest } from "../middleware/roles";
-import { syncUser } from "../services/user.service";
+import { authenticate, AuthRequest } from "../middleware/auth-simple";
 import { pool } from "../db/pool";
 import { writeAuditLog } from "../services/audit.service";
 
 const router = Router();
-
-// POST /me/sync — called after login to upsert user
-router.post("/me/sync", checkJwt, async (req: AuthRequest, res: Response) => {
-  try {
-    const sub = req.auth?.payload?.sub;
-    if (!sub) {
-      res.status(401).json({ error: "Missing auth sub" });
-      return;
-    }
-
-    const { email, display_name, avatar_url } = req.body;
-    const user = await syncUser({
-      auth0Id: sub,
-      email,
-      displayName: display_name,
-      avatarUrl: avatar_url,
-    });
-
-    await writeAuditLog({
-      userId: user.id,
-      action: "USER_SYNC",
-      entityType: "user",
-      entityId: user.id,
-      ipAddress: req.ip,
-    });
-
-    res.json({ id: user.id, roles: user.roles });
-  } catch (err) {
-    res.status(500).json({ error: "Sync failed", details: (err as Error).message });
-  }
-});
+const auth = [authenticate];
 
 // GET /me/profile — get current user profile
-router.get("/me/profile", checkJwt, loadUser, async (req: AuthRequest, res: Response) => {
+router.get("/me/profile", ...auth, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.userId) {
       res.status(404).json({ error: "User not found" });
@@ -68,7 +36,7 @@ router.get("/me/profile", checkJwt, loadUser, async (req: AuthRequest, res: Resp
 });
 
 // PATCH /me/profile — update display name or avatar
-router.patch("/me/profile", checkJwt, loadUser, async (req: AuthRequest, res: Response) => {
+router.patch("/me/profile", ...auth, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.userId) {
       res.status(404).json({ error: "User not found" });

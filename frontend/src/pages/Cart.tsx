@@ -1,20 +1,18 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { useAuth0 } from "@auth0/auth0-react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { api, type CartItem } from "../api";
-import { useToken } from "../hooks/useToken";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Cart() {
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
-  const getToken = useToken();
+  const { isAuthenticated, token } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<CartItem[]>([]);
   const [subtotal, setSubtotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   async function loadCart() {
-    const token = await getToken();
     if (!token) return;
     try {
       const data = await api.getCart(token);
@@ -24,17 +22,15 @@ export default function Cart() {
     setLoading(false);
   }
 
-  useEffect(() => { if (isAuthenticated) loadCart(); else setLoading(false); }, [isAuthenticated]);
+  useEffect(() => { if (token) loadCart(); else setLoading(false); }, [token]);
 
   async function updateQty(id: number, qty: number) {
-    const token = await getToken();
     if (!token) return;
     await api.updateCartItem(token, id, qty);
     loadCart();
   }
 
   async function remove(id: number) {
-    const token = await getToken();
     if (!token) return;
     await api.removeCartItem(token, id);
     loadCart();
@@ -45,7 +41,7 @@ export default function Cart() {
       <ShoppingBag className="w-16 h-16 text-blood/30 mx-auto mb-6" />
       <h1 className="font-display text-4xl text-white mb-4">VOTRE PANIER</h1>
       <p className="text-bone/50 mb-8">Connectez-vous pour voir votre panier</p>
-      <button onClick={() => loginWithRedirect()} className="font-display tracking-wider px-8 py-4 bg-blood text-white hover:bg-blood-glow transition-all">CONNEXION</button>
+      <button onClick={() => navigate("/")} className="font-display tracking-wider px-8 py-4 bg-blood text-white hover:bg-blood-glow transition-all">CONNEXION</button>
     </div>
   );
 

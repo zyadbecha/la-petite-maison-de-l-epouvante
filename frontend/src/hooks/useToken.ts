@@ -1,17 +1,29 @@
-import { useAuth0 } from "@auth0/auth0-react";
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
+
+const TOKEN_KEY = "auth_token";
 
 export function useToken() {
-  const { getAccessTokenSilently, isAuthenticated } = useAuth0();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(TOKEN_KEY);
+    setToken(stored);
+  }, []);
 
   const getToken = useCallback(async () => {
-    if (!isAuthenticated) return null;
-    try {
-      return await getAccessTokenSilently();
-    } catch {
-      return null;
-    }
-  }, [getAccessTokenSilently, isAuthenticated]);
+    return token;
+  }, [token]);
 
-  return getToken;
+  const setAuthToken = useCallback((newToken: string | null) => {
+    if (newToken) {
+      localStorage.setItem(TOKEN_KEY, newToken);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+    setToken(newToken);
+  }, []);
+
+  const isAuthenticated = !!token;
+
+  return { getToken, setAuthToken, isAuthenticated, token };
 }

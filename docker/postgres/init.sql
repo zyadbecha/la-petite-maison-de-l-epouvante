@@ -20,8 +20,9 @@ CREATE TYPE product_status AS ENUM ('DRAFT', 'PUBLISHED', 'OUT_OF_STOCK', 'ARCHI
 -- ============================================================
 CREATE TABLE users (
     id              SERIAL PRIMARY KEY,
-    auth0_id        VARCHAR(255) NOT NULL UNIQUE,
+    auth0_id        VARCHAR(255) UNIQUE,
     email           VARCHAR(255) UNIQUE,
+    password_hash   VARCHAR(255),
     display_name    VARCHAR(60),
     avatar_url      TEXT,
     is_active       BOOLEAN DEFAULT TRUE,

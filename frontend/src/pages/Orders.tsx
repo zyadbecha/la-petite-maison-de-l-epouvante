@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Package, ChevronDown, ChevronUp } from "lucide-react";
 import { api, type Order } from "../api";
-import { useToken } from "../hooks/useToken";
+import { useAuth } from "../hooks/useAuth";
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "text-yellow-400 border-yellow-400/30 bg-yellow-400/5",
@@ -18,27 +18,24 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function Orders() {
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
-  const getToken = useToken();
+  const { isAuthenticated, token } = useAuth();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [details, setDetails] = useState<Record<number, Order>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated) { setLoading(false); return; }
+    if (!token) { setLoading(false); return; }
     (async () => {
-      const token = await getToken();
-      if (!token) return;
       try { setOrders(await api.getOrders(token)); } catch { /* */ }
       setLoading(false);
     })();
-  }, [isAuthenticated]);
+  }, [token]);
 
   async function toggleExpand(id: number) {
     if (expanded === id) { setExpanded(null); return; }
     if (!details[id]) {
-      const token = await getToken();
       if (!token) return;
       const detail = await api.getOrder(token, id);
       setDetails(d => ({ ...d, [id]: detail }));
@@ -51,7 +48,7 @@ export default function Orders() {
       <Package className="w-12 h-12 text-blood/30 mx-auto mb-4" />
       <h1 className="font-display text-4xl text-white mb-4">MES COMMANDES</h1>
       <p className="text-bone/50 mb-8">Connectez-vous pour voir vos commandes</p>
-      <button onClick={() => loginWithRedirect()} className="font-display tracking-wider px-8 py-4 bg-blood text-white">CONNEXION</button>
+      <button onClick={() => navigate("/")} className="font-display tracking-wider px-8 py-4 bg-blood text-white">CONNEXION</button>
     </div>
   );
 

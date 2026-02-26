@@ -1,34 +1,31 @@
 import { useEffect, useState } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { User, Save, Shield } from "lucide-react";
 import { api } from "../api";
-import { useToken } from "../hooks/useToken";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Profile() {
-  const { isAuthenticated, loginWithRedirect, user } = useAuth0();
-  const getToken = useToken();
+  const { isAuthenticated, token, user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<{ id: number; email: string; display_name: string; avatar_url: string; roles: string[] } | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!token) return;
     (async () => {
-      const token = await getToken();
-      if (!token) return;
       try {
         const p = await api.getProfile(token);
         setProfile(p);
         setDisplayName(p.display_name || "");
       } catch { /* */ }
     })();
-  }, [isAuthenticated]);
+  }, [token]);
 
   async function save() {
     setSaving(true);
-    const token = await getToken();
     if (!token) return;
     try {
       await api.updateProfile(token, { display_name: displayName });
@@ -42,7 +39,7 @@ export default function Profile() {
     <div className="max-w-xl mx-auto px-6 py-20 text-center">
       <User className="w-12 h-12 text-blood/30 mx-auto mb-4" />
       <h1 className="font-display text-4xl text-white mb-4">MON PROFIL</h1>
-      <button onClick={() => loginWithRedirect()} className="font-display tracking-wider px-8 py-4 bg-blood text-white">CONNEXION</button>
+      <button onClick={() => navigate("/")} className="font-display tracking-wider px-8 py-4 bg-blood text-white">CONNEXION</button>
     </div>
   );
 
@@ -54,12 +51,12 @@ export default function Profile() {
 
       <div className="flex items-center gap-6 mb-10">
         <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-blood/30 bg-smoke">
-          {(profile?.avatar_url || user?.picture) && (
-            <img src={profile?.avatar_url || user?.picture} alt="Avatar" className="w-full h-full object-cover" />
+          {(profile?.avatar_url) && (
+            <img src={profile?.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
           )}
         </div>
         <div>
-          <p className="font-display text-2xl text-white">{profile?.display_name || user?.name}</p>
+          <p className="font-display text-2xl text-white">{profile?.display_name || user?.displayName || "Utilisateur"}</p>
           <p className="text-sm text-bone/50">{profile?.email || user?.email}</p>
           {profile?.roles && (
             <div className="flex gap-2 mt-2">

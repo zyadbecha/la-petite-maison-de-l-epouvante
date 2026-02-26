@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { BookOpen, Check, Crown } from "lucide-react";
 import { api, type FanzineIssue, type Subscription } from "../api";
-import { useToken } from "../hooks/useToken";
+import { useAuth } from "../hooks/useAuth";
 
 const PLANS = [
   { type: "DIGITAL", label: "Numérique", price: "19,99", desc: "4 numéros/an en PDF, accès liseuse intégrée" },
@@ -12,28 +12,26 @@ const PLANS = [
 ];
 
 export default function Fanzine() {
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
-  const getToken = useToken();
+  const { isAuthenticated, token } = useAuth();
+  const navigate = useNavigate();
   const [issues, setIssues] = useState<FanzineIssue[]>([]);
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [subscribing, setSubscribing] = useState("");
 
   useEffect(() => {
     api.getFanzineIssues().then(setIssues).catch(() => {});
-    if (isAuthenticated) loadSubs();
-  }, [isAuthenticated]);
+    if (token) loadSubs();
+  }, [token]);
 
   async function loadSubs() {
-    const token = await getToken();
     if (!token) return;
     api.getSubscriptions(token).then(setSubs).catch(() => {});
   }
 
   async function subscribe(type: string) {
-    if (!isAuthenticated) { loginWithRedirect(); return; }
+    if (!isAuthenticated) { navigate("/"); return; }
     setSubscribing(type);
     try {
-      const token = await getToken();
       if (!token) return;
       await api.subscribe(token, type);
       loadSubs();

@@ -14,9 +14,9 @@ const envSchema = z.object({
   DB_PASSWORD: z.string(),
   DB_NAME: z.string(),
 
-  // Auth0
-  AUTH0_AUDIENCE: z.string().url(),
-  AUTH0_DOMAIN: z.string(),
+  // Auth0 (no longer required - using internal auth instead)
+  AUTH0_AUDIENCE: z.string().url().optional(),
+  AUTH0_DOMAIN: z.string().optional(),
   AUTH0_MGMT_AUDIENCE: z.string().url().optional(),
   AUTH0_MGMT_CLIENT_ID: z.string().optional(),
   AUTH0_MGMT_CLIENT_SECRET: z.string().optional(),
@@ -24,6 +24,9 @@ const envSchema = z.object({
   // App
   FRONTEND_URL: z.string().default("http://localhost:3000"),
   CONTENT_CHECK_URL: z.string().optional(),
+
+  // JWT Secret for internal auth
+  JWT_SECRET: z.string().default("dev-secret-change-in-production"),
 });
 
 const parsed = envSchema.safeParse(process.env);

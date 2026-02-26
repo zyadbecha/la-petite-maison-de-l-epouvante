@@ -32,6 +32,18 @@ export interface Order { id: number; status: string; total_amount: string; shipp
 export interface OrderItem { id: number; title: string; price: string; quantity: number; image_url: string; }
 export interface Subscription { id: number; type: string; status: string; start_date: string; end_date: string; auto_renew: boolean; price_paid: string; }
 
+export interface AuthUser {
+  id: number;
+  email: string;
+  displayName: string | null;
+  roles: string[];
+}
+
+export interface AuthResponse {
+  token: string;
+  user: AuthUser;
+}
+
 export const api = {
   // Public
   getProducts: (params?: string) => request<{ products: Product[]; pagination: { page: number; limit: number; total: number; total_pages: number } }>(`/products${params ? `?${params}` : ""}`),
@@ -40,9 +52,20 @@ export const api = {
   getCategories: () => request<Category[]>("/categories"),
   getFanzineIssues: () => request<FanzineIssue[]>("/fanzine/issues"),
 
+  // Auth - Register & Login (using internal auth)
+  register: (email: string, password: string, displayName?: string) =>
+    request<AuthResponse>("/register", { 
+      method: "POST", 
+      body: JSON.stringify({ email, password, display_name: displayName }) 
+    }),
+  login: (email: string, password: string) =>
+    request<AuthResponse>("/login", { 
+      method: "POST", 
+      body: JSON.stringify({ email, password }) 
+    }),
+  getMe: (token: string) => request<AuthUser>("/me", { token }),
+
   // Auth required
-  syncUser: (token: string, body: { email?: string; display_name?: string; avatar_url?: string }) =>
-    request<{ id: number; roles: string[] }>("/me/sync", { method: "POST", body: JSON.stringify(body), token }),
   getProfile: (token: string) => request<{ id: number; email: string; display_name: string; avatar_url: string; roles: string[] }>("/me/profile", { token }),
   updateProfile: (token: string, body: { display_name?: string }) =>
     request<{ id: number; display_name: string }>("/me/profile", { method: "PATCH", body: JSON.stringify(body), token }),

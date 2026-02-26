@@ -1,23 +1,21 @@
 import { useEffect, useState } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { BookOpen, ExternalLink, Lock } from "lucide-react";
 import { api, type FanzineIssue } from "../api";
-import { useToken } from "../hooks/useToken";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Library() {
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
-  const getToken = useToken();
+  const { isAuthenticated, token } = useAuth();
+  const navigate = useNavigate();
   const [owned, setOwned] = useState<FanzineIssue[]>([]);
   const [free, setFree] = useState<FanzineIssue[]>([]);
   const [reading, setReading] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated) { setLoading(false); return; }
+    if (!token) { setLoading(false); return; }
     (async () => {
-      const token = await getToken();
-      if (!token) return;
       try {
         const data = await api.getLibrary(token);
         setOwned(data.owned as FanzineIssue[]);
@@ -25,10 +23,9 @@ export default function Library() {
       } catch { /* */ }
       setLoading(false);
     })();
-  }, [isAuthenticated]);
+  }, [token]);
 
   async function readIssue(id: number) {
-    const token = await getToken();
     if (!token) return;
     try {
       const data = await api.readIssue(token, id);
@@ -41,7 +38,7 @@ export default function Library() {
       <Lock className="w-12 h-12 text-phantom/30 mx-auto mb-4" />
       <h1 className="font-display text-4xl text-white mb-4">MA BIBLIOTHÈQUE</h1>
       <p className="text-bone/50 mb-8">Connectez-vous pour accéder à vos numéros</p>
-      <button onClick={() => loginWithRedirect()} className="font-display tracking-wider px-8 py-4 bg-phantom text-white hover:bg-phantom-glow transition-all">CONNEXION</button>
+      <button onClick={() => navigate("/")} className="font-display tracking-wider px-8 py-4 bg-phantom text-white hover:bg-phantom-glow transition-all">CONNEXION</button>
     </div>
   );
 

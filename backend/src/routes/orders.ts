@@ -1,10 +1,10 @@
 import { Router, Response } from "express";
-import { checkJwt } from "../middleware/auth";
-import { loadUser, requireRole, AuthRequest } from "../middleware/roles";
+import { authenticate, AuthRequest } from "../middleware/auth-simple";
+import { requireRole } from "../middleware/roles";
 import { pool } from "../db/pool";
 
 const router = Router();
-const auth = [checkJwt, loadUser, requireRole("BUYER", "ADMIN")];
+const auth = [authenticate, requireRole("BUYER", "ADMIN")];
 
 // GET /orders — list user orders
 router.get("/orders", ...auth, async (req: AuthRequest, res: Response) => {

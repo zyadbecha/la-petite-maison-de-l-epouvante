@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useAuth0 } from "@auth0/auth0-react";
 import { motion } from "framer-motion";
 import { ShoppingCart, ChevronLeft, Check, AlertCircle, Star } from "lucide-react";
 import { api, type Product } from "../api";
-import { useToken } from "../hooks/useToken";
+import { useAuth } from "../hooks/useAuth";
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
-  const getToken = useToken();
+  const { isAuthenticated, token } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -25,12 +23,10 @@ export default function ProductDetail() {
   }, [slug]);
 
   async function addToCart() {
-    if (!isAuthenticated) { loginWithRedirect(); return; }
-    if (!product) return;
+    if (!isAuthenticated) { return; }
+    if (!product || !token) return;
     setAdding(true); setError("");
     try {
-      const token = await getToken();
-      if (!token) return;
       await api.addToCart(token, product.id, quantity);
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
