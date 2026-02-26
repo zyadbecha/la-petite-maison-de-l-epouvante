@@ -45,9 +45,9 @@ router.post("/admin/users/:id/role", ...adminAuth, async (req: AuthRequest, res:
       userId: req.userId,
       action: "ROLE_GRANTED",
       entityType: "user",
-      entityId: parseInt(req.params.id),
+      entityId: parseInt(String(req.params.id)),
       details: { role },
-      ipAddress: req.ip,
+      ipAddress: String(req.ip),
     });
 
     res.json({ success: true });
@@ -179,9 +179,9 @@ router.patch("/admin/orders/:id/status", ...adminAuth, async (req: AuthRequest, 
       userId: req.userId,
       action: "ORDER_STATUS_CHANGED",
       entityType: "order",
-      entityId: parseInt(req.params.id),
+      entityId: parseInt(String(req.params.id)),
       details: { new_status: status },
-      ipAddress: req.ip,
+      ipAddress: String(req.ip),
     });
 
     res.json(result.rows[0]);

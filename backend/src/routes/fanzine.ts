@@ -51,7 +51,7 @@ router.get("/fanzine/issues/:id", async (req: Request, res: Response) => {
 // ============================================================
 router.get("/fanzine/read/:id", ...auth, async (req: AuthRequest, res: Response) => {
   try {
-    const issueId = parseInt(req.params.id, 10);
+    const issueId = parseInt(String(req.params.id), 10);
 
     // Check if free preview
     const issue = await pool.query(

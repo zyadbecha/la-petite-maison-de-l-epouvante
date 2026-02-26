@@ -3,7 +3,6 @@ import { pool } from "../db/pool";
 import { logger } from "../config/logger";
 
 export interface AuthRequest extends Request {
-  auth?: { payload: { sub: string } };
   userId?: number;
   userRoles?: string[];
 }
