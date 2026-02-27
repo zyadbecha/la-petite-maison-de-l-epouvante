@@ -301,7 +301,7 @@ INSERT INTO fanzine_issues (issue_number, title, description, cover_url, page_co
 -- SEED DATA — Admin user (password: Admin123!)
 -- ============================================================
 INSERT INTO users (email, password_hash, display_name) VALUES
-    ('admin@petitemaison.fr', '$2a$12$LJ3m4ys3Lk0TSwHkPKrJZOQXqHiKye3k1JMqhWySMhYBPKnDAM3G2', 'Admin');
+    ('admin@petitemaison.fr', '$2b$12$QV1AYsKDDSNhVXMvhZGDyOCfclPS8ViBkxA6mnfVNDWq3dO1DxCLi', 'Admin');
 INSERT INTO user_roles (user_id, role) VALUES
     ((SELECT id FROM users WHERE email = 'admin@petitemaison.fr'), 'ADMIN'),
     ((SELECT id FROM users WHERE email = 'admin@petitemaison.fr'), 'BUYER');
