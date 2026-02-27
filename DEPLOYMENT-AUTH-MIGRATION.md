@@ -10,18 +10,28 @@ Ce guide explique comment migrer de Auth0 vers l'authentification interne.
 
 ---
 
-## Étape 1: Trouver le mot de passe de la base de données
+## Informations Azure Actuelles
 
-### Option A: Via Azure Key Vault
-1. Va sur [Azure Portal](https://portal.azure.com)
-2. Cherche "Key Vaults" dans la barre de recherche
-3. Si tu as un Key Vault, regarde dans les Secrets
+| Élément | Valeur |
+|---------|--------|
+| Resource Group | `rg-petitemaison` |
+| Container Apps Environment | `cae-petitemaison` |
+| Backend App | `petite-maison-api` |
+| Frontend App | `petite-maison-web` |
+| PostgreSQL Server | À récupérer (voir étape 1) |
+| Database | `petitemaison_db` |
+| Admin | `pmadmin` |
 
-### Option B: Réinitialiser le mot de passe
-1. Va sur [Azure Portal](https://portal.azure.com)
-2. Cherche `pg-petitemaison-5a710650`
-3. Clique sur **Reset password**
-4. Définis un nouveau mot de passe et **sauvegarde-le quelque part!**
+---
+
+## Étape 1: Récupérer le nom du serveur PostgreSQL
+
+Exécute cette commande pour lister tes serveurs PostgreSQL:
+
+```
+bash
+az postgres flexible-server list --resource-group rg-petitemaison --query "[].name" -o table
+```
 
 ---
 
@@ -29,24 +39,22 @@ Ce guide explique comment migrer de Auth0 vers l'authentification interne.
 
 ### Via Azure CLI
 
-Ouvre un terminal et exécute:
-
 ```
 bash
-# 1. Se connecter à Azure
+# Se connecter à Azure
 az login
 
-# 2. Exécuter la migration (ajoute la colonne password_hash)
+# Exécuter la migration (remplace PG_SERVER par le nom récupéré à l'étape 1)
 az postgres flexible-server execute \
-  --name pg-petitemaison-5a710650 \
-  --database-name petite_maison \
+  --name PG_SERVER \
+  --database-name petitemaison_db \
   --resource-group rg-petitemaison \
   --query-text "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"
 ```
 
 ### Via Azure Portal
 
-1. Va sur `pg-petitemaison-5a710650` dans Azure Portal
+1. Va sur ton serveur PostgreSQL dans Azure Portal
 2. Clique sur **Query Editor**
 3. Connecte-toi avec `pmadmin` et ton mot de passe
 4. Copie-colle et exécute:
@@ -60,52 +68,55 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
 
 ## Étape 3: Configurer les Secrets Azure (Backend)
 
-Exécute ces commandes dans ton terminal (remplace `TON_MOT_DE_PASSE` par le mot de passe que tu as trouvé ou créé):
+**IMPORTANT**: Remplace `TON_MOT_DE_PASSE_PG` par ton mot de passe PostgreSQL.
 
 ```
 bash
 # Secrets pour petite-maison-api
+# REMPLACE: PG_SERVER par le nom de ton serveur PostgreSQL (ex: pg-abc123)
+# REMPLACE: TON_MOT_DE_PASSE_PG par ton mot de passe PostgreSQL
 
-# db-host
 az containerapp secret set \
   --name petite-maison-api \
   --resource-group rg-petitemaison \
-  --secrets "db-host=pg-petitemaison-5a710650.postgres.database.azure.com"
-
-# db-port
-az containerapp secret set \
-  --name petite-maison-api \
-  --resource-group rg-petitemaison \
-  --secrets "db-port=5432"
-
-# db-user
-az containerapp secret set \
-  --name petite-maison-api \
-  --resource-group rg-petitemaison \
-  --secrets "db-user=pmadmin"
-
-# db-password (remplace par TON_MOT_DE_PASSE)
-az containerapp secret set \
-  --name petite-maison-api \
-  --resource-group rg-petitemaison \
-  --secrets "db-password=TON_MOT_DE_PASSE"
-
-# db-name
-az containerapp secret set \
-  --name petite-maison-api \
-  --resource-group rg-petitemaison \
-  --secrets "db-name=petite_maison"
-
-# jwt-secret
-az containerapp secret set \
-  --name petite-maison-api \
-  --resource-group rg-petitemaison \
-  --secrets "jwt-secret=JwtSecret2024!LaPetiteMaison123"
+  --secrets \
+    "db-host=PG_SERVER.postgres.database.azure.com" \
+    "db-port=5432" \
+    "db-user=pmadmin" \
+    "db-password=TON_MOT_DE_PASSE_PG" \
+    "db-name=petitemaison_db" \
+    "jwt-secret=JwtSecret2024!LaPetiteMaison123"
 ```
 
 ---
 
-## Étape 4: Redémarrer le Backend
+## Étape 4: Configurer les variables d'environnement du Backend
+
+```
+bash
+# Supprimer les anciennes variables Auth0 et ajouter les nouvelles
+az containerapp update \
+  --name petite-maison-api \
+  --resource-group rg-petitemaison \
+  --remove-env-vars AUTH0_AUDIENCE AUTH0_DOMAIN AUTH0_MGMT_AUDIENCE AUTH0_MGMT_CLIENT_ID AUTH0_MGMT_CLIENT_SECRET
+
+az containerapp update \
+  --name petite-maison-api \
+  --resource-group rg-petitemaison \
+  --set-env-vars \
+    NODE_ENV=production \
+    PORT=4000 \
+    DB_HOST=secretref:db-host \
+    DB_PORT=secretref:db-port \
+    DB_USER=secretref:db-user \
+    DB_PASSWORD=secretref:db-password \
+    DB_NAME=secretref:db-name \
+    FRONTEND_URL=https://petite-maison-web.grayforest-0a123456.francecentral.azurecontainerapps.io
+```
+
+---
+
+## Étape 5: Redémarrer le Backend
 
 ```
 bash
@@ -116,15 +127,35 @@ az containerapp restart \
 
 ---
 
-## Étape 5: Variables GitHub Actions
+## Étape 6: GitHub Actions - Variables
 
 Va dans **GitHub** → **Settings** → **Secrets and variables** → **Actions**
 
-### Variables (pas secrets):
+### Variables (Repository Variables):
+
 | Nom | Valeur |
 |-----|--------|
 | `AZURE_RESOURCE_GROUP` | `rg-petitemaison` |
-| `VITE_API_URL` | URL de ton backend |
+| `AZURE_LOCATION` | `francecentral` |
+| `VITE_API_URL` | URL du backend (ex: https://petite-maison-api.xxx.azurecontainerapps.io) |
+
+### Secrets (Repository Secrets):
+
+| Nom | Valeur |
+|-----|--------|
+| `AZURE_CREDENTIALS` | Voir ci-dessous |
+
+**Pour AZURE_CREDENTIALS**, utilise ce JSON:
+
+```
+json
+{
+  "clientId": "be3677ba-cc02-41d1-9a90-832c82c00ac7",
+  "clientSecret": "04~8Q~C2yJdl~3Dt34j-IupzwfAlOhH3MbunucLD",
+  "subscriptionId": "2b8306f8-1245-46bb-9ad6-4ace1ab5693f",
+  "tenantId": "2a37d147-6e8b-40ca-b07f-47adf41f2e9d"
+}
+```
 
 ---
 
@@ -135,15 +166,15 @@ Après le redémarrage, teste l'API:
 ```
 bash
 # Tester la santé du backend
-curl https://ton-backend.azurecontainerapps.io/health
+curl https://petite-maison-api.grayforest-0a123456.francecentral.azurecontainerapps.io/health
 
 # Tester l'inscription
-curl -X POST https://ton-backend.azurecontainerapps.io/auth/register \
+curl -X POST https://petite-maison-api.grayforest-0a123456.francecentral.azurecontainerapps.io/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@test.com","password":"test123456"}'
 
 # Tester la connexion
-curl -X POST https://ton-backend.azurecontainerapps.io/auth/login \
+curl -X POST https://petite-maison-api.grayforest-0a123456.francecentral.azurecontainerapps.io/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@test.com","password":"test123456"}'
 ```
@@ -163,19 +194,23 @@ curl -X POST https://ton-backend.azurecontainerapps.io/auth/login \
 
 ---
 
-## Informations de connexion Azure
+## Commandes Utiles
 
-| Élément | Valeur |
-|---------|--------|
-| Resource Group | `rg-petitemaison` |
-| PostgreSQL Server | `pg-petitemaison-5a710650` |
-| Endpoint | `pg-petitemaison-5a710650.postgres.database.azure.com` |
-| Database | `petite_maison` |
-| Admin | `pmadmin` |
+```
+bash
+# Voir les secrets configurés
+az containerapp secret list --name petite-maison-api --resource-group rg-petitemaison
+
+# Voir les logs du backend
+az containerapp logs show --name petite-maison-api --resource-group rg-petitemaison --tail 50
+
+# Voir l'URL du backend
+az containerapp show --name petite-maison-api --resource-group rg-petitemaison --query properties.configuration.ingress.fqdn -o tsv
+```
 
 ---
 
-## Token JWT
+## JWT
 
 - **Durée**: 7 jours
 - **Stockage**: localStorage dans le navigateur
