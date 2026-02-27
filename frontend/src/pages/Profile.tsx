@@ -39,7 +39,7 @@ export default function Profile() {
     <div className="max-w-xl mx-auto px-6 py-20 text-center">
       <User className="w-12 h-12 text-blood/30 mx-auto mb-4" />
       <h1 className="font-display text-4xl text-white mb-4">MON PROFIL</h1>
-      <button onClick={() => navigate("/")} className="font-display tracking-wider px-8 py-4 bg-blood text-white">CONNEXION</button>
+      <button onClick={() => navigate("/login")} className="font-display tracking-wider px-8 py-4 bg-blood text-white">CONNEXION</button>
     </div>
   );
 

@@ -6,16 +6,12 @@ import { api } from "../api";
 import { useAuth } from "../hooks/useAuth";
 
 export default function Navbar() {
-  const { token, isAuthenticated, logout, login } = useAuth();
+  const { token, isAuthenticated, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -35,19 +31,6 @@ export default function Navbar() {
       } catch { /* ignore */ }
     })();
   }, [token]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError("");
-    try {
-      await login(loginEmail, loginPassword);
-      setShowLogin(false);
-      setLoginEmail("");
-      setLoginPassword("");
-    } catch (err) {
-      setLoginError(err instanceof Error ? err.message : "Erreur de connexion");
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -138,13 +121,13 @@ export default function Navbar() {
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => setShowLogin(true)}
+              <Link
+                to="/login"
                 className="font-display text-sm tracking-wider px-5 py-2 border border-blood/50 text-blood hover:bg-blood hover:text-white transition-all duration-300 glow-hover-red flex items-center gap-2"
               >
                 <LogIn className="w-4 h-4" />
                 CONNEXION
-              </button>
+              </Link>
             )}
           </div>
 
@@ -200,13 +183,14 @@ export default function Navbar() {
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => { setShowLogin(true); setMenuOpen(false); }}
+                  <Link
+                    to="/login"
+                    onClick={() => setMenuOpen(false)}
                     className="w-full font-display tracking-wider py-3 border border-blood text-blood hover:bg-blood hover:text-white transition-all flex items-center justify-center gap-2"
                   >
                     <LogIn className="w-5 h-5" />
                     CONNEXION
-                  </button>
+                  </Link>
                 )}
               </div>
             </motion.div>
@@ -214,62 +198,6 @@ export default function Navbar() {
         </AnimatePresence>
       </motion.header>
 
-      {/* Login Modal */}
-      <AnimatePresence>
-        {showLogin && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowLogin(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-abyss border border-blood/30 p-8 rounded-lg max-w-md w-full mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 className="font-display text-2xl text-white mb-6 text-center">Connexion</h2>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-bone text-sm mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full px-4 py-2 bg-void border border-blood/30 text-white rounded focus:border-blood focus:outline-none"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-bone text-sm mb-2">Mot de passe</label>
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full px-4 py-2 bg-void border border-blood/30 text-white rounded focus:border-blood focus:outline-none"
-                    required
-                  />
-                </div>
-                {loginError && (
-                  <p className="text-blood text-sm">{loginError}</p>
-                )}
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-blood text-white font-display tracking-wider hover:bg-blood/80 transition-colors rounded"
-                >
-                  Se connecter
-                </button>
-              </form>
-              <p className="text-bone/60 text-sm mt-4 text-center">
-                Pas encore de compte? Créez-en un lors de votre première commande.
-              </p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 }

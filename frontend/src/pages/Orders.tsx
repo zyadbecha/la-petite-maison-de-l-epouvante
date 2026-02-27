@@ -48,7 +48,7 @@ export default function Orders() {
       <Package className="w-12 h-12 text-blood/30 mx-auto mb-4" />
       <h1 className="font-display text-4xl text-white mb-4">MES COMMANDES</h1>
       <p className="text-bone/50 mb-8">Connectez-vous pour voir vos commandes</p>
-      <button onClick={() => navigate("/")} className="font-display tracking-wider px-8 py-4 bg-blood text-white">CONNEXION</button>
+      <button onClick={() => navigate("/login")} className="font-display tracking-wider px-8 py-4 bg-blood text-white">CONNEXION</button>
     </div>
   );
 

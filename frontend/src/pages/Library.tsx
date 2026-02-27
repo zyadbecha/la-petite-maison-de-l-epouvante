@@ -38,7 +38,7 @@ export default function Library() {
       <Lock className="w-12 h-12 text-phantom/30 mx-auto mb-4" />
       <h1 className="font-display text-4xl text-white mb-4">MA BIBLIOTHÈQUE</h1>
       <p className="text-bone/50 mb-8">Connectez-vous pour accéder à vos numéros</p>
-      <button onClick={() => navigate("/")} className="font-display tracking-wider px-8 py-4 bg-phantom text-white hover:bg-phantom-glow transition-all">CONNEXION</button>
+      <button onClick={() => navigate("/login")} className="font-display tracking-wider px-8 py-4 bg-phantom text-white hover:bg-phantom-glow transition-all">CONNEXION</button>
     </div>
   );
 

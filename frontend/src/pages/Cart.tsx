@@ -41,7 +41,7 @@ export default function Cart() {
       <ShoppingBag className="w-16 h-16 text-blood/30 mx-auto mb-6" />
       <h1 className="font-display text-4xl text-white mb-4">VOTRE PANIER</h1>
       <p className="text-bone/50 mb-8">Connectez-vous pour voir votre panier</p>
-      <button onClick={() => navigate("/")} className="font-display tracking-wider px-8 py-4 bg-blood text-white hover:bg-blood-glow transition-all">CONNEXION</button>
+      <button onClick={() => navigate("/login")} className="font-display tracking-wider px-8 py-4 bg-blood text-white hover:bg-blood-glow transition-all">CONNEXION</button>
     </div>
   );
 

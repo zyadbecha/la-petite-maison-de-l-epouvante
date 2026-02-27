@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 
 import { env } from "./config/env";
 import { logger } from "./config/logger";
@@ -23,6 +24,7 @@ const app = express();
 // ============================================================
 app.use(helmet());
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 
 // HTTP request logging (Morgan → Winston)
@@ -36,7 +38,7 @@ app.use(
 // ROUTES
 // ============================================================
 app.use(healthRouter);
-app.use(authRouter);
+app.use("/auth", authRouter);
 app.use(meRouter);
 app.use(productsRouter);
 app.use(cartRouter);

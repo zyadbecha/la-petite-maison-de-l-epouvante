@@ -20,9 +20,8 @@ CREATE TYPE product_status AS ENUM ('DRAFT', 'PUBLISHED', 'OUT_OF_STOCK', 'ARCHI
 -- ============================================================
 CREATE TABLE users (
     id              SERIAL PRIMARY KEY,
-    auth0_id        VARCHAR(255) UNIQUE,
-    email           VARCHAR(255) UNIQUE,
-    password_hash   VARCHAR(255),
+    email           VARCHAR(255) NOT NULL UNIQUE,
+    password_hash   VARCHAR(255) NOT NULL,
     display_name    VARCHAR(60),
     avatar_url      TEXT,
     is_active       BOOLEAN DEFAULT TRUE,
@@ -297,3 +296,12 @@ INSERT INTO fanzine_issues (issue_number, title, description, cover_url, page_co
     (4,  'Body Horror',               'Cronenberg, Barker et la mutation du corps',            'https://placehold.co/400x560/1a1a1a/ff0040?text=Fanzine+4',  70, '2020-12-15', FALSE),
     (5,  'J-Horror',                  'La vague d''horreur japonaise',                         'https://placehold.co/400x560/1a1a1a/ff0040?text=Fanzine+5',  66, '2021-03-15', FALSE),
     (6,  'L''Orc — Making of',        'Dans les coulisses de la web-série Evil Ed',            'https://placehold.co/400x560/1a1a1a/7c3aed?text=Fanzine+6',  80, '2021-06-15', FALSE);
+
+-- ============================================================
+-- SEED DATA — Admin user (password: Admin123!)
+-- ============================================================
+INSERT INTO users (email, password_hash, display_name) VALUES
+    ('admin@petitemaison.fr', '$2a$12$LJ3m4ys3Lk0TSwHkPKrJZOQXqHiKye3k1JMqhWySMhYBPKnDAM3G2', 'Admin');
+INSERT INTO user_roles (user_id, role) VALUES
+    ((SELECT id FROM users WHERE email = 'admin@petitemaison.fr'), 'ADMIN'),
+    ((SELECT id FROM users WHERE email = 'admin@petitemaison.fr'), 'BUYER');

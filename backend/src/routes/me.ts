@@ -1,10 +1,10 @@
 import { Router, Response } from "express";
-import { authenticate, AuthRequest } from "../middleware/auth-simple";
+import { checkJwt, AuthRequest } from "../middleware/auth";
 import { pool } from "../db/pool";
 import { writeAuditLog } from "../services/audit.service";
 
 const router = Router();
-const auth = [authenticate];
+const auth = [checkJwt];
 
 // GET /me/profile — get current user profile
 router.get("/me/profile", ...auth, async (req: AuthRequest, res: Response) => {
@@ -61,7 +61,7 @@ router.patch("/me/profile", ...auth, async (req: AuthRequest, res: Response) => 
       entityType: "user",
       entityId: req.userId,
       details: { display_name, avatar_url },
-      ipAddress: req.ip,
+      ipAddress: String(req.ip),
     });
 
     res.json(result.rows[0]);

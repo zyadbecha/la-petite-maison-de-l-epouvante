@@ -29,7 +29,7 @@ export default function Fanzine() {
   }
 
   async function subscribe(type: string) {
-    if (!isAuthenticated) { navigate("/"); return; }
+    if (!isAuthenticated) { navigate("/login"); return; }
     setSubscribing(type);
     try {
       if (!token) return;

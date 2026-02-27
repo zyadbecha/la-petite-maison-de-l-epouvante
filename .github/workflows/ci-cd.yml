@@ -160,8 +160,9 @@ jobs:
           DB_USER: test_user
           DB_PASSWORD: test_password
           DB_NAME: test_db
-          AUTH0_AUDIENCE: https://test.auth0.com/api/v2/
-          AUTH0_DOMAIN: test.auth0.com
+          JWT_SECRET: test-jwt-secret-for-ci-pipeline
+          JWT_EXPIRES_IN: 7d
+          JWT_REFRESH_EXPIRES_IN: 30d
           FRONTEND_URL: http://localhost:3000
         run: npx jest --testPathPattern="integration|e2e" --passWithNoTests --forceExit
 
@@ -309,9 +310,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VITE_API_URL=${{ vars.VITE_API_URL }}
-            VITE_AUTH0_DOMAIN=${{ vars.VITE_AUTH0_DOMAIN }}
-            VITE_AUTH0_CLIENT_ID=${{ vars.VITE_AUTH0_CLIENT_ID }}
-            VITE_AUTH0_AUDIENCE=${{ vars.VITE_AUTH0_AUDIENCE }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

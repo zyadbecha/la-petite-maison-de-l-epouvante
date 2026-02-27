@@ -14,19 +14,13 @@ const envSchema = z.object({
   DB_PASSWORD: z.string(),
   DB_NAME: z.string(),
 
-  // Auth0 (no longer required - using internal auth instead)
-  AUTH0_AUDIENCE: z.string().url().optional(),
-  AUTH0_DOMAIN: z.string().optional(),
-  AUTH0_MGMT_AUDIENCE: z.string().url().optional(),
-  AUTH0_MGMT_CLIENT_ID: z.string().optional(),
-  AUTH0_MGMT_CLIENT_SECRET: z.string().optional(),
-
   // App
   FRONTEND_URL: z.string().default("http://localhost:3000"),
-  CONTENT_CHECK_URL: z.string().optional(),
 
-  // JWT Secret for internal auth
-  JWT_SECRET: z.string().default("dev-secret-change-in-production"),
+  // JWT
+  JWT_SECRET: z.string().default("dev-secret-change-in-production-min-32-chars!!"),
+  JWT_EXPIRES_IN: z.string().default("7d"),
+  JWT_REFRESH_EXPIRES_IN: z.string().default("30d"),
 });
 
 const parsed = envSchema.safeParse(process.env);

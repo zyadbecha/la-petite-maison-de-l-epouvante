@@ -9,12 +9,14 @@ import Fanzine from "./pages/Fanzine";
 import Library from "./pages/Library";
 import Orders from "./pages/Orders";
 import Profile from "./pages/Profile";
+import Login from "./pages/Login";
 
 export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/produits" element={<Products />} />
         <Route path="/produits/:slug" element={<ProductDetail />} />
         <Route path="/panier" element={<Cart />} />

@@ -1,111 +1,182 @@
-import { Router, Response } from "express";
-import { register, login } from "../services/auth.service";
+import { Router, Request, Response } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { pool } from "../db/pool";
+import { logger } from "../config/logger";
+import { env } from "../config/env";
+import { generateAccessToken, generateRefreshToken, checkJwt, AuthRequest } from "../middleware/auth";
 import { writeAuditLog } from "../services/audit.service";
-import { AuthRequest, authenticate } from "../middleware/auth-simple";
 
 const router = Router();
+const SALT_ROUNDS = 12;
 
-// POST /register — Register a new user
-router.post("/register", async (req: AuthRequest, res: Response) => {
+// ─── POST /auth/register ───────────────────
+router.post("/register", async (req: Request, res: Response) => {
   try {
     const { email, password, display_name } = req.body;
 
     if (!email || !password) {
-      res.status(400).json({ error: "Email and password are required" });
+      res.status(400).json({ error: "Email et mot de passe requis" });
+      return;
+    }
+    if (password.length < 8) {
+      res.status(400).json({ error: "Le mot de passe doit faire au moins 8 caractères" });
       return;
     }
 
-    if (password.length < 6) {
-      res.status(400).json({ error: "Password must be at least 6 characters" });
+    const existing = await pool.query("SELECT id FROM users WHERE email = $1", [email.toLowerCase()]);
+    if (existing.rows.length > 0) {
+      res.status(409).json({ error: "Cet email est déjà utilisé" });
       return;
     }
 
-    const result = await register({ email, password, displayName: display_name });
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    await writeAuditLog({
-      userId: result.user.id,
-      action: "USER_REGISTER",
-      entityType: "user",
-      entityId: result.user.id,
-      ipAddress: req.ip,
+    const result = await pool.query(
+      `INSERT INTO users (email, password_hash, display_name)
+       VALUES ($1, $2, $3)
+       RETURNING id, email, display_name`,
+      [email.toLowerCase(), passwordHash, display_name || email.split("@")[0]]
+    );
+
+    const user = result.rows[0];
+
+    await pool.query(
+      "INSERT INTO user_roles (user_id, role) VALUES ($1, 'BUYER')",
+      [user.id]
+    );
+
+    const accessToken = generateAccessToken(user.id, user.email);
+    const refreshToken = generateRefreshToken(user.id, user.email);
+
+    await writeAuditLog({ userId: user.id, action: "USER_REGISTER", entityType: "user", entityId: user.id, ipAddress: String(req.ip) });
+
+    logger.info("User registered", { userId: user.id });
+
+    res.status(201).json({
+      user: { id: user.id, email: user.email, display_name: user.display_name, roles: ["BUYER"] },
+      accessToken,
+      refreshToken,
     });
-
-    res.status(201).json(result);
   } catch (err) {
-    const message = (err as Error).message;
-    if (message === "Email already registered") {
-      res.status(409).json({ error: message });
-      return;
-    }
-    res.status(500).json({ error: "Registration failed", details: message });
+    logger.error("Register error", { error: (err as Error).message });
+    res.status(500).json({ error: "Erreur interne" });
   }
 });
 
-// POST /login — Login an existing user
-router.post("/login", async (req: AuthRequest, res: Response) => {
+// ─── POST /auth/login ─────────────────────
+router.post("/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      res.status(400).json({ error: "Email and password are required" });
+      res.status(400).json({ error: "Email et mot de passe requis" });
       return;
     }
 
-    const result = await login({ email, password });
+    const userResult = await pool.query(
+      "SELECT id, email, password_hash, display_name, avatar_url, is_active FROM users WHERE email = $1",
+      [email.toLowerCase()]
+    );
 
-    await writeAuditLog({
-      userId: result.user.id,
-      action: "USER_LOGIN",
-      entityType: "user",
-      entityId: result.user.id,
-      ipAddress: req.ip,
+    if (userResult.rows.length === 0) {
+      res.status(401).json({ error: "Email ou mot de passe incorrect" });
+      return;
+    }
+
+    const user = userResult.rows[0];
+
+    if (!user.is_active) {
+      res.status(403).json({ error: "Compte désactivé" });
+      return;
+    }
+
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) {
+      res.status(401).json({ error: "Email ou mot de passe incorrect" });
+      return;
+    }
+
+    const rolesResult = await pool.query("SELECT role FROM user_roles WHERE user_id = $1", [user.id]);
+    const roles = rolesResult.rows.map((r) => r.role);
+
+    const accessToken = generateAccessToken(user.id, user.email);
+    const refreshToken = generateRefreshToken(user.id, user.email);
+
+    await writeAuditLog({ userId: user.id, action: "USER_LOGIN", entityType: "user", entityId: user.id, ipAddress: String(req.ip) });
+
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        display_name: user.display_name,
+        avatar_url: user.avatar_url,
+        roles,
+      },
+      accessToken,
+      refreshToken,
     });
-
-    res.json(result);
   } catch (err) {
-    const message = (err as Error).message;
-    if (message === "Invalid email or password") {
-      res.status(401).json({ error: message });
-      return;
-    }
-    res.status(500).json({ error: "Login failed", details: message });
+    logger.error("Login error", { error: (err as Error).message });
+    res.status(500).json({ error: "Erreur interne" });
   }
 });
 
-// GET /me — Get current user (requires authentication)
-router.get("/me", authenticate, async (req: AuthRequest, res: Response) => {
+// ─── POST /auth/refresh ───────────────────
+router.post("/refresh", async (req: Request, res: Response) => {
   try {
-    if (!req.userId) {
-      res.status(401).json({ error: "Not authenticated" });
+    const { refreshToken: token } = req.body;
+    if (!token) {
+      res.status(400).json({ error: "Refresh token requis" });
       return;
     }
 
-    const { pool } = await import("../db/pool");
-    const result = await pool.query(
-      `SELECT u.id, u.email, u.display_name, u.avatar_url, u.created_at,
-              ARRAY_AGG(ur.role) AS roles
-       FROM users u
-       LEFT JOIN user_roles ur ON ur.user_id = u.id
-       WHERE u.id = $1
-       GROUP BY u.id`,
+    const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: number; email: string; type?: string };
+
+    if (decoded.type !== "refresh") {
+      res.status(401).json({ error: "Token invalide" });
+      return;
+    }
+
+    const userResult = await pool.query("SELECT id, email, is_active FROM users WHERE id = $1", [decoded.userId]);
+    if (userResult.rows.length === 0 || !userResult.rows[0].is_active) {
+      res.status(401).json({ error: "Utilisateur introuvable" });
+      return;
+    }
+
+    const user = userResult.rows[0];
+    const accessToken = generateAccessToken(user.id, user.email);
+    const newRefreshToken = generateRefreshToken(user.id, user.email);
+
+    res.json({ accessToken, refreshToken: newRefreshToken });
+  } catch {
+    res.status(401).json({ error: "Refresh token expiré" });
+  }
+});
+
+// ─── GET /auth/me ─────────────────────────
+router.get("/me", checkJwt, async (req: AuthRequest, res: Response) => {
+  try {
+    const userResult = await pool.query(
+      "SELECT id, email, display_name, avatar_url FROM users WHERE id = $1",
       [req.userId]
     );
 
-    if (result.rows.length === 0) {
-      res.status(404).json({ error: "User not found" });
+    if (userResult.rows.length === 0) {
+      res.status(404).json({ error: "Utilisateur introuvable" });
       return;
     }
 
-    const user = result.rows[0];
-    // Transform to camelCase for frontend
+    const user = userResult.rows[0];
+    const rolesResult = await pool.query("SELECT role FROM user_roles WHERE user_id = $1", [user.id]);
+
     res.json({
-      id: user.id,
-      email: user.email,
-      displayName: user.display_name,
-      roles: user.roles || [],
+      ...user,
+      roles: rolesResult.rows.map((r) => r.role),
     });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    logger.error("Get me error", { error: (err as Error).message });
+    res.status(500).json({ error: "Erreur interne" });
   }
 });
 

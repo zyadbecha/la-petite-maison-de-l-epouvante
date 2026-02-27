@@ -40,7 +40,8 @@ export interface AuthUser {
 }
 
 export interface AuthResponse {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
   user: AuthUser;
 }
 
@@ -52,18 +53,23 @@ export const api = {
   getCategories: () => request<Category[]>("/categories"),
   getFanzineIssues: () => request<FanzineIssue[]>("/fanzine/issues"),
 
-  // Auth - Register & Login (using internal auth)
+  // Auth
   register: (email: string, password: string, displayName?: string) =>
-    request<AuthResponse>("/register", { 
-      method: "POST", 
-      body: JSON.stringify({ email, password, display_name: displayName }) 
+    request<AuthResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password, display_name: displayName })
     }),
   login: (email: string, password: string) =>
-    request<AuthResponse>("/login", { 
-      method: "POST", 
-      body: JSON.stringify({ email, password }) 
+    request<AuthResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password })
     }),
-  getMe: (token: string) => request<AuthUser>("/me", { token }),
+  refresh: (refreshToken: string) =>
+    request<{ accessToken: string; refreshToken: string }>("/auth/refresh", {
+      method: "POST",
+      body: JSON.stringify({ refreshToken }),
+    }),
+  getMe: (token: string) => request<AuthUser>("/auth/me", { token }),
 
   // Auth required
   getProfile: (token: string) => request<{ id: number; email: string; display_name: string; avatar_url: string; roles: string[] }>("/me/profile", { token }),
