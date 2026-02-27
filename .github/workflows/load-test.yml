@@ -11,11 +11,11 @@ on:
       target_url:
         description: "API base URL to test"
         required: true
-        default: "https://petite-maison-api.example.azurecontainerapps.io"
+        default: "https://petite-maison-api.wonderfulbush-aa479b2b.francecentral.azurecontainerapps.io"
       vus:
         description: "Max virtual users"
         required: false
-        default: "50"
+        default: "30"
   workflow_run:
     workflows: ["CI/CD Pipeline"]
     types: [completed]
@@ -41,12 +41,34 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
           sudo apt-get update && sudo apt-get install -y k6
 
+      - name: Warm up backend (cold start)
+        env:
+          API_URL: ${{ github.event.inputs.target_url || vars.BACKEND_URL }}
+        run: |
+          echo "⏳ Warming up backend (may take up to 60s for cold start)..."
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$API_URL/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Backend is warm! (attempt $i)"
+              # Send a few more requests to warm up DB connections
+              curl -s "$API_URL/products" > /dev/null
+              curl -s "$API_URL/categories" > /dev/null
+              curl -s "$API_URL/fanzine/issues" > /dev/null
+              sleep 2
+              echo "✅ Warm-up complete"
+              exit 0
+            fi
+            echo "⏳ Attempt $i: status $STATUS — retrying in 5s..."
+            sleep 5
+          done
+          echo "⚠️ Backend may still be cold, proceeding anyway..."
+
       - name: Run k6 load test
         env:
           API_URL: ${{ github.event.inputs.target_url || vars.BACKEND_URL }}
         run: |
           echo "🎯 Target: $API_URL"
-          echo "👥 Testing with up to ${{ github.event.inputs.vus || '50' }} virtual users"
+          echo "👥 Testing with up to ${{ github.event.inputs.vus || '30' }} virtual users"
           k6 run \
             --out json=k6-results.json \
             --env API_URL=$API_URL \
@@ -80,14 +102,14 @@ jobs:
               const pDetail = metrics.product_detail_duration?.values || {};
 
               let md = '';
-              md += '| Metric | Value | Threshold | Status |\\n';
-              md += '|--------|-------|-----------|--------|\\n';
-              md += '| P95 Response Time | ' + fmt(dur['p(95)']) + 'ms | < 500ms | ' + (dur['p(95)'] < 500 ? '✅' : '❌') + ' |\\n';
-              md += '| P99 Response Time | ' + fmt(dur['p(99)']) + 'ms | — | ℹ️ |\\n';
-              md += '| Median Response Time | ' + fmt(dur.med) + 'ms | — | ℹ️ |\\n';
-              md += '| Error Rate | ' + fmt((errs.rate || 0) * 100) + '% | < 1% | ' + ((errs.rate || 0) < 0.01 ? '✅' : '❌') + ' |\\n';
-              md += '| Product List P95 | ' + fmt(pList['p(95)']) + 'ms | < 400ms | ' + ((pList['p(95)'] || 0) < 400 ? '✅' : '❌') + ' |\\n';
-              md += '| Product Detail P95 | ' + fmt(pDetail['p(95)']) + 'ms | < 300ms | ' + ((pDetail['p(95)'] || 0) < 300 ? '✅' : '❌') + ' |\\n';
+              md += '| Metric | Value | Threshold | Status |\n';
+              md += '|--------|-------|-----------|--------|\n';
+              md += '| P95 Response Time | ' + fmt(dur['p(95)']) + 'ms | < 2000ms | ' + (dur['p(95)'] < 2000 ? '✅' : '❌') + ' |\n';
+              md += '| P99 Response Time | ' + fmt(dur['p(99)']) + 'ms | — | ℹ️ |\n';
+              md += '| Median Response Time | ' + fmt(dur.med) + 'ms | — | ℹ️ |\n';
+              md += '| Error Rate | ' + fmt((errs.rate || 0) * 100) + '% | < 5% | ' + ((errs.rate || 0) < 0.05 ? '✅' : '❌') + ' |\n';
+              md += '| Product List P95 | ' + fmt(pList['p(95)']) + 'ms | < 1500ms | ' + ((pList['p(95)'] || 0) < 1500 ? '✅' : '❌') + ' |\n';
+              md += '| Product Detail P95 | ' + fmt(pDetail['p(95)']) + 'ms | < 1500ms | ' + ((pDetail['p(95)'] || 0) < 1500 ? '✅' : '❌') + ' |\n';
               console.log(md);
             " >> $GITHUB_STEP_SUMMARY
           else

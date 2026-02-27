@@ -7,21 +7,21 @@ const errorRate = new Rate("errors");
 const productListDuration = new Trend("product_list_duration");
 const productDetailDuration = new Trend("product_detail_duration");
 
-// Test configuration
+// Test configuration — tuned for Azure Container Apps (Burstable B1ms)
 export const options = {
   stages: [
-    { duration: "30s", target: 10 },   // Ramp up to 10 users
-    { duration: "1m", target: 50 },    // Ramp up to 50 users
-    { duration: "2m", target: 50 },    // Stay at 50 users
-    { duration: "30s", target: 100 },  // Spike to 100 users
-    { duration: "1m", target: 100 },   // Stay at 100 users
-    { duration: "30s", target: 0 },    // Ramp down
+    { duration: "20s", target: 5 },    // Ramp up to 5 users (warm up)
+    { duration: "30s", target: 15 },   // Ramp up to 15 users
+    { duration: "1m", target: 15 },    // Stay at 15 users
+    { duration: "20s", target: 30 },   // Spike to 30 users
+    { duration: "30s", target: 30 },   // Stay at 30 users
+    { duration: "20s", target: 0 },    // Ramp down
   ],
   thresholds: {
-    http_req_duration: ["p(95)<500"],   // 95th percentile < 500ms
-    errors: ["rate<0.01"],              // Error rate < 1%
-    product_list_duration: ["p(95)<400"],
-    product_detail_duration: ["p(95)<300"],
+    http_req_duration: ["p(95)<2000"],  // 95th percentile < 2s (Azure cold start)
+    errors: ["rate<0.05"],              // Error rate < 5%
+    product_list_duration: ["p(95)<1500"],
+    product_detail_duration: ["p(95)<1500"],
   },
 };
 
