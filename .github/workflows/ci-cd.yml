@@ -351,8 +351,7 @@ jobs:
             DB_USER=secretref:db-user
             DB_PASSWORD=secretref:db-password
             DB_NAME=secretref:db-name
-            AUTH0_AUDIENCE=secretref:auth0-audience
-            AUTH0_DOMAIN=secretref:auth0-domain
+            JWT_SECRET=secretref:jwt-secret
             FRONTEND_URL=${{ vars.FRONTEND_URL }}
 
       - name: Deploy Frontend Container App
