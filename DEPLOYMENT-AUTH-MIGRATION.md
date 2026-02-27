@@ -143,17 +143,22 @@ Va dans **GitHub** → **Settings** → **Secrets and variables** → **Actions*
 
 | Nom | Valeur |
 |-----|--------|
-| `AZURE_CREDENTIALS` | Voir ci-dessous |
+| `AZURE_CREDENTIALS` | JSON avec tes identifiants Azure (voir ci-dessous) |
 
-**Pour AZURE_CREDENTIALS**, utilise ce JSON:
+**Pour créer AZURE_CREDENTIALS**, va dans Azure Portal:
+1. Azure Active Directory → App registrations
+2. Sélectionne ton application (ou crée-en une si nécessaire)
+3. Overview → copie **Client ID** et **Tenant ID**
+4. Certificates & secrets → crée un nouveau client secret et copie la valeur
+5. All services → Subscriptions → copie **Subscription ID**
 
-```
-json
+Puis crée le JSON:
+```json
 {
-  "clientId": "be3677ba-cc02-41d1-9a90-832c82c00ac7",
-  "clientSecret": "04~8Q~C2yJdl~3Dt34j-IupzwfAlOhH3MbunucLD",
-  "subscriptionId": "2b8306f8-1245-46bb-9ad6-4ace1ab5693f",
-  "tenantId": "2a37d147-6e8b-40ca-b07f-47adf41f2e9d"
+  "clientId": "TON_CLIENT_ID",
+  "clientSecret": "TON_CLIENT_SECRET",
+  "subscriptionId": "TON_SUBSCRIPTION_ID",
+  "tenantId": "TON_TENANT_ID"
 }
 ```
 
