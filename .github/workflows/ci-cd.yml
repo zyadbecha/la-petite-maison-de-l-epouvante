@@ -164,7 +164,7 @@ jobs:
           JWT_EXPIRES_IN: 7d
           JWT_REFRESH_EXPIRES_IN: 30d
           FRONTEND_URL: http://localhost:3000
-        run: npx jest --testPathPattern="integration|e2e" --passWithNoTests --forceExit
+        run: npx jest --testPathPatterns="integration|e2e" --passWithNoTests --forceExit
 
   # ════════════════════════════════════════════
   # STAGE 4 — SAST SECURITY
